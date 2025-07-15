@@ -1,0 +1,86 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0'
+
+    - name: Restore
+      run: dotnet restore BotDiscordLaoTon.Net.csproj
+
+    - name: Build
+      run: dotnet build BotDiscordLaoTon.Net.csproj --configuration Release
+
+    - name: Publish
+      run: dotnet publish BotDiscordLaoTon.Net.csproj --configuration Release --output publish_output
+
+    - name: Deploy
+      env:
+        TOKEN_BOT_SECRET: ${{ secrets.TOKEN_BOT }} # Đảm bảo biến này được tạo trong GitHub Secrets
+      run: |
+        $deployPath = "D:\Deployment\BotLaoTon\"
+        $publishOutput = "publish_output\"
+        $taskName = "MyDiscordBotTask"
+        $exePath = Join-Path $deployPath "BotDiscordLaoTon.Net.exe"
+
+        Write-Host "--- Deployment Started ---"   
+
+        Write-Host "Attempting to stop existing scheduled task '$taskName'..."
+        schtasks /end /tn $taskName /f | Out-Null 
+        Start-Sleep -Seconds 5
+
+        Write-Host "Clearing deployment path: $deployPath"
+        if (Test-Path $deployPath) {
+            Remove-Item $deployPath -Recurse -Force
+        }
+        New-Item -ItemType Directory -Path $deployPath -Force   
+
+        Write-Host "Copying published files from $publishOutput to $deployPath"
+        Copy-Item "$publishOutput\*" $deployPath -Recurse -Force    
+
+        Write-Host "Updating appsettings.json with Discord Token..."
+        $appSettingsPath = Join-Path $deployPath "appsettings.json"   
+
+        if (-not (Test-Path $appSettingsPath)) {
+            Write-Host "appsettings.json not found, creating a basic one."
+            '{}' | Set-Content -Path $appSettingsPath -Encoding UTF8
+        }   
+            
+        $appSettings = Get-Content -Path $appSettingsPath -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if (-not $appSettings.Discord) {
+          $appSettings | Add-Member -MemberType NoteProperty -Name "Discord" -Value (@{}) -Force
+        }
+
+        $appSettings.Discord.Token = "$env:TOKEN_BOT_SECRET"    
+
+        $appSettings | ConvertTo-Json -Depth 10 -Compress | Set-Content -Path $appSettingsPath -Encoding UTF8   
+
+        Write-Host "appsettings.json updated."    
+
+        Write-Host "Updating/Creating scheduled task '$taskName'..."    
+
+        schtasks /delete /tn $taskName /f | Out-Null    
+
+        schtasks /create /tn $taskName /tr "`"$exePath`"" /sc ONSTART /ru SYSTEM /RL HIGHEST /f   
+
+        Write-Host "Scheduled task '$taskName' updated/created."    
+
+        Write-Host "Triggering scheduled task '$taskName' to run immediately..."
+        schtasks /run /tn $taskName
+        Write-Host "Scheduled task '$taskName' triggered."    
+
+        Write-Host "--- Deployment Completed ---"
+      shell: powershell
