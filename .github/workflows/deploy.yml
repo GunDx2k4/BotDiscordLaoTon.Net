@@ -39,7 +39,7 @@ jobs:
         Write-Host "--- Deployment Started ---"   
 
         Write-Host "Attempting to stop existing scheduled task '$taskName'..."
-        schtasks /end /tn $taskName /f | Out-Null 
+        schtasks /end /tn $taskName | Out-Null 
         Start-Sleep -Seconds 5
 
         Write-Host "Clearing deployment path: $deployPath"
