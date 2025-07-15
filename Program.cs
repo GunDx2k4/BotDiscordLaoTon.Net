@@ -12,11 +12,23 @@ Console.OutputEncoding = Encoding.UTF8;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+
 builder.Services.Configure<DiscordBotOptions>(builder.Configuration.GetSection("Discord"));
+
+var deploymentPath = AppContext.BaseDirectory;
+var logDirectory = Path.Combine(deploymentPath, "logs");
+if (!Directory.Exists(logDirectory))
+{
+    Directory.CreateDirectory(logDirectory);
+}
+var logFilePath = Path.Combine(logDirectory, "log-.log"); 
 
 var loggerConfig = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File($"logs/log-{DateTime.Now:yy.MM.dd_HH.mm}.log")
+    .WriteTo.File(
+        logFilePath, 
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 builder.Logging.ClearProviders();
