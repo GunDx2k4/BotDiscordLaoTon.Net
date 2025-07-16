@@ -29,7 +29,7 @@ public class EmbedHelper(DiscordSocketClient client)
         return new EmbedBuilder
         {
             Color = Color.Blue,
-            Description = Format.Bold(content),
+            Description = content,
             Author = author ?? GetEmbedAuthorBot(),
             Timestamp = DateTimeOffset.Now
         };
@@ -40,7 +40,7 @@ public class EmbedHelper(DiscordSocketClient client)
         return new EmbedBuilder
         {
             Color = Color.Red,
-            Description = Format.Bold(content),
+            Description = content,
             Author = GetEmbedAuthorBot(),
             Timestamp = DateTimeOffset.Now
         };
@@ -51,7 +51,7 @@ public class EmbedHelper(DiscordSocketClient client)
         return new EmbedBuilder
         {
             Color = Color.Green,
-            Description = Format.Bold(content),
+            Description = content,
             Author = GetEmbedAuthorBot(),
             Timestamp = DateTimeOffset.Now
         };
@@ -62,7 +62,7 @@ public class EmbedHelper(DiscordSocketClient client)
         return new EmbedBuilder
         {
             Color = Color.Gold,
-            Description = Format.Bold(content),
+            Description = content,
             Author = GetEmbedAuthorBot(),
             Timestamp = DateTimeOffset.Now
         };

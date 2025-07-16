@@ -1,4 +1,7 @@
 using System.Reflection;
+using System.Text;
+using BotDiscordLaoTon.Net.Converters;
+using BotDiscordLaoTon.Net.Extensions;
 using BotDiscordLaoTon.Net.Helpers;
 using Discord;
 using Discord.Interactions;
@@ -10,6 +13,7 @@ public class InteractionHandler(DiscordSocketClient client, InteractionService i
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        interactionService.AddTypeConverter<Color>(new ColorConverter());
         await interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
 
         client.InteractionCreated += HandleInteraction;
@@ -42,44 +46,25 @@ public class InteractionHandler(DiscordSocketClient client, InteractionService i
 
     private async Task HandleInteractionExecutionResult(IDiscordInteraction interaction, IResult result)
     {
-        switch (result.Error)
+        StringBuilder interactionName = new();
+        if (interaction is IApplicationCommandInteraction commandInteraction)
         {
-            case InteractionCommandError.UnmetPrecondition:
-                logger.LogInformation($"Unmet precondition - {result.Error} [{result.ErrorReason}]");
-                break;
-
-            case InteractionCommandError.BadArgs:
-                logger.LogInformation($"Unmet precondition - {result.Error} [{result.ErrorReason}]");
-                break;
-
-            case InteractionCommandError.ConvertFailed:
-                logger.LogInformation($"Convert Failed - {result.Error} [{result.ErrorReason}]");
-                break;
-
-            case InteractionCommandError.Exception:
-                logger.LogInformation($"Exception - {result.Error} [{result.ErrorReason}]");
-                break;
-
-            case InteractionCommandError.ParseFailed:
-                logger.LogInformation($"Parse Failed - {result.Error} [{result.ErrorReason}]");
-                break;
-
-            case InteractionCommandError.UnknownCommand:
-                logger.LogInformation($"Unknown Command - {result.Error} [{result.ErrorReason}]");
-                break;
-
-            case InteractionCommandError.Unsuccessful:
-                logger.LogInformation($"Unsuccessful - {result.Error} [{result.ErrorReason}]");
-                break;
+            interactionName.Append($"{commandInteraction.Data.Name}");
         }
-
+        IGuild? guild = null;
+        IChannel? channel = null;
+        if (interaction.GuildId != null)
+            guild = client.GetGuild((ulong)interaction.GuildId);
+        if (interaction.ChannelId != null)
+            channel = await client.GetChannelAsync((ulong)interaction.ChannelId);
+        logger.LogError("{User} use [{interactionName}] {channel} {guild} => {Error} [{ErrorReason}]", interaction.User.ToStringDebug(), interactionName, channel.ToStringDebug(), guild?.ToStringDebug() ?? "DM", result.Error, result.ErrorReason);
         if (!interaction.HasResponded)
         {
-            await interaction.RespondAsync(embed: embedHelper.ErrorEmbedBuilder($"Error [{result.ErrorReason}]").Build());
+            await interaction.RespondAsync(embed: embedHelper.ErrorEmbedBuilder($"{Format.Bold("Error")} [{result.ErrorReason}]").Build());
         }
         else
         {
-            await interaction.FollowupAsync(embed: embedHelper.ErrorEmbedBuilder($"Error [{result.ErrorReason}]").Build());
+            await interaction.FollowupAsync(embed: embedHelper.ErrorEmbedBuilder($"{Format.Bold("Error")} [{result.ErrorReason}]").Build());
         }
     }
 }

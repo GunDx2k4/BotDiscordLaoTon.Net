@@ -39,7 +39,7 @@ builder.Services.AddSingleton(new DiscordSocketConfig
     GatewayIntents = GatewayIntents.All,
     FormatUsersInBidirectionalUnicode = false,
     // Add GatewayIntents.GuildMembers to the GatewayIntents and change this to true if you want to download all users on startup
-    AlwaysDownloadUsers = false,
+    AlwaysDownloadUsers = true,
     LogGatewayIntentWarnings = false,
     LogLevel = LogSeverity.Info
 });
