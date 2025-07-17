@@ -59,6 +59,7 @@ builder.Services.AddSingleton<InteractionService>();
 
 builder.Services.AddHostedService<DiscordBotService>();
 builder.Services.AddHostedService<InteractionHandler>();
+builder.Services.AddHostedService<GuildService>();
 
 
 var host = builder.Build();

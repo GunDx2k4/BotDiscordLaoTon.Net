@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text;
 using BotDiscordLaoTon.Net.Converters;
 using BotDiscordLaoTon.Net.Extensions;
+using BotDiscordLaoTon.Net.Guilds;
 using BotDiscordLaoTon.Net.Helpers;
 using Discord;
 using Discord.Interactions;
@@ -14,6 +15,8 @@ public class InteractionHandler(DiscordSocketClient client, InteractionService i
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         interactionService.AddTypeConverter<Color>(new ColorConverter());
+        interactionService.AddGenericTypeConverter<Enum>(typeof(EnumConverter<>));
+
         await interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
 
         client.InteractionCreated += HandleInteraction;
@@ -53,18 +56,22 @@ public class InteractionHandler(DiscordSocketClient client, InteractionService i
         }
         IGuild? guild = null;
         IChannel? channel = null;
+        var guildConfiguration = GuildManager.GuildConfigurations[0];
         if (interaction.GuildId != null)
-            guild = client.GetGuild((ulong)interaction.GuildId);
+        { 
+            guildConfiguration = GuildManager.GuildConfigurations[interaction.GuildId ?? 0];
+            guild = client.GetGuild((ulong)(interaction.GuildId ?? 0));
+        }
         if (interaction.ChannelId != null)
             channel = await client.GetChannelAsync((ulong)interaction.ChannelId);
         logger.LogError("{User} use [{interactionName}] {channel} {guild} => {Error} [{ErrorReason}]", interaction.User.ToStringDebug(), interactionName, channel.ToStringDebug(), guild?.ToStringDebug() ?? "DM", result.Error, result.ErrorReason);
         if (!interaction.HasResponded)
         {
-            await interaction.RespondAsync(embed: embedHelper.ErrorEmbedBuilder($"{Format.Bold("Error")} [{result.ErrorReason}]").Build());
+            await interaction.RespondAsync(embed: embedHelper.ErrorEmbedBuilder($"{Format.Bold(guildConfiguration.LocalizedStrings.ERROR)} [{result.ErrorReason}]").Build());
         }
         else
         {
-            await interaction.FollowupAsync(embed: embedHelper.ErrorEmbedBuilder($"{Format.Bold("Error")} [{result.ErrorReason}]").Build());
+            await interaction.FollowupAsync(embed: embedHelper.ErrorEmbedBuilder($"{Format.Bold(guildConfiguration.LocalizedStrings.ERROR)} [{result.ErrorReason}]").Build());
         }
     }
 }
