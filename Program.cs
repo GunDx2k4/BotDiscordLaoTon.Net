@@ -8,6 +8,7 @@ using Discord.Rest;
 using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Serilog.Events;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -23,6 +24,7 @@ if (!Directory.Exists(logDirectory))
 var logFilePath = Path.Combine(logDirectory, "log-.log"); 
 
 var loggerConfig = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .WriteTo.Console()
     .WriteTo.File(
         logFilePath, 
@@ -35,8 +37,10 @@ builder.Logging.AddSerilog(loggerConfig, dispose: true);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    options.UseSqlite(connectionString);
+    var dbFileName = builder.Configuration.GetConnectionString("DatabaseName") ?? "app.db";
+    string baseDir = AppContext.BaseDirectory;
+    string fullPath = Path.Combine(baseDir, dbFileName);
+    options.UseSqlite($"Data Source={fullPath}");
 });
 
 builder.Services.AddSingleton(new DiscordSocketConfig
@@ -68,5 +72,21 @@ builder.Services.AddWindowsService(options =>
 });
 
 var host = builder.Build();
+
+
+using (var scope = host.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating or initializing the database.");
+    }
+}
 
 await host.RunAsync();
