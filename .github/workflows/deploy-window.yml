@@ -25,16 +25,13 @@ jobs:
         }
       shell: pwsh
 
+    - name: Clean project
+      run: dotnet clean --configuration Release
+      shell: pwsh
+
     - name: Publish Project
       run: |
         dotnet publish -c Release -o "${{ vars.PUBLISH_PATH }}"
-      shell: pwsh 
-
-    - name: Install Service and Set Environment
-      run: |
-        $serviceName = "${{ vars.SERVICE_NAME }}"
-        $fullExePath = Join-Path "${{ vars.PUBLISH_PATH }}" "${{ vars.EXE_NAME }}"
-        sc.exe create "$serviceName" binPath= "$fullExePath"
         
         $filePath = "${{ vars.PUBLISH_PATH }}\appsettings.json"
         $content = Get-Content $filePath -Raw -Encoding UTF8
@@ -42,6 +39,14 @@ jobs:
           -replace '__TOKEN_BOT__', '${{ secrets.DISCORD_TOKEN }}' `
           -replace '__STATUS_BOT__', '${{ vars.DISCORD_STATUS }}'
         Set-Content -Path $filePath -Value $newContent -Encoding UTF8
+      shell: pwsh 
+
+    - name: Install Service
+      run: |
+        $serviceName = "${{ vars.SERVICE_NAME }}"
+        $fullExePath = Join-Path "${{ vars.PUBLISH_PATH }}" "${{ vars.EXE_NAME }}"
+        sc.exe create "$serviceName" binPath= "$fullExePath"
+        
       shell: pwsh
 
     - name: Start Service
