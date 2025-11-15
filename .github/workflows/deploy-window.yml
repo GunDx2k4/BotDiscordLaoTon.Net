@@ -40,7 +40,7 @@ jobs:
         $content = Get-Content $filePath -Raw -Encoding UTF8
         $newContent = $content `
           -replace '__TOKEN_BOT__', '${{ secrets.DISCORD_TOKEN }}' `
-          -replace '__STATUS_BOT__', '${{ secrets.DISCORD_STATUS }}'
+          -replace '__STATUS_BOT__', '${{ vars.DISCORD_STATUS }}'
         Set-Content -Path $filePath -Value $newContent -Encoding UTF8
       shell: pwsh
 
