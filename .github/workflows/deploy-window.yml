@@ -27,10 +27,11 @@ jobs:
         }
       shell: pwsh
 
-    - name: Clean Publish Directory
+    - name: Clean appsettings.json
       run: |
-        if (Test-Path -Path "${{ vars.PUBLISH_PATH }}") {
-          Remove-Item -Path "${{ vars.PUBLISH_PATH }}" -Recurse -Force
+        $appSettingsPath = Join-Path "${{ vars.PUBLISH_PATH }}" "appsettings.json"
+        if (Test-Path -Path $appSettingsPath) {
+          Remove-Item -Path $appSettingsPath -Force
         }
       shell: pwsh
 
