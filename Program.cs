@@ -1,6 +1,7 @@
 using BotDiscordLaoTon.Net;
 using BotDiscordLaoTon.Net.Data;
 using BotDiscordLaoTon.Net.Options;
+using BotDiscordLaoTon.Net.Repositories;
 using BotDiscordLaoTon.Net.Services;
 using Discord;
 using Discord.Interactions;
@@ -42,6 +43,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     string fullPath = Path.Combine(baseDir, dbFileName);
     options.UseSqlite($"Data Source={fullPath}");
 });
+
+builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 
 builder.Services.AddSingleton(new DiscordSocketConfig
 {
