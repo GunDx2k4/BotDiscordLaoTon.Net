@@ -12,13 +12,19 @@ public static class GuildExtensions
         return role;
     }
 
+    public static async Task<IRole> CreateRoleByNameAsync(this IGuild guild, string roleName)
+    {
+        var role = await guild.CreateRoleAsync(roleName, permissions: GuildPermissions.None, isMentionable: true, isHoisted: true, color: Color.Blue);
+        return role;
+    }
+
     public static async Task<IRole> CreateOrGetRoleAsync(this IGuild guild, string roleName)
     {
         var role = await guild.GetRoleByNameAsync(roleName);
 
         if (role == null)
         {
-            role = await guild.CreateRoleAsync(roleName, permissions: GuildPermissions.None, isMentionable: false);
+            role = await guild.CreateRoleByNameAsync(roleName);
         }
         return role;
     }
@@ -30,19 +36,23 @@ public static class GuildExtensions
         return category;
     }
 
+    public static async Task<ICategoryChannel> CreateCategoryByNameAsync(this IGuild guild, string categoryName)
+    {
+        var category = await guild.CreateCategoryAsync(categoryName.ToUpper(), prop =>
+        {
+            prop.Position = 0;
+        });
+        return category;
+    }
+
     public static async Task<ICategoryChannel> CreateOrGetCategoryAsync(this IGuild guild, string categoryName)
     {
         var category = await guild.GetCategoryByNameAsync(categoryName);
 
         if (category == null)
         {
-            category = await guild.CreateCategoryAsync(categoryName.ToUpper());
+            category = await guild.CreateCategoryByNameAsync(categoryName);
         }
-        await category.ModifyAsync(prop =>
-        {
-            prop.Position = 0;
-            prop.Name = categoryName.ToUpper();
-        });
         return category;
     }
 
@@ -55,56 +65,65 @@ public static class GuildExtensions
         return channel;
     }
 
-    public static async Task<T> CreateOrGetChannelAsync<T>(this ICategoryChannel category, string channelName) where T : INestedChannel 
+    public static async Task<T> CreateChannelByNameAsync<T>(this ICategoryChannel category, string channelName) where T : INestedChannel
+    {
+        var guild = category.Guild;
+        T channel;
+
+        switch (typeof(T))
+        {
+            case Type t when t == typeof(ITextChannel):
+                channel = (T)await guild.CreateTextChannelAsync(channelName, prop =>
+                {
+                    prop.CategoryId = category.Id;
+                });
+                break;
+            case Type t when t == typeof(IVoiceChannel):
+                channel = (T)await guild.CreateVoiceChannelAsync(channelName, prop =>
+                {
+                    prop.CategoryId = category.Id;
+                    prop.UserLimit = 99;
+                });
+                break;
+            case Type t when t == typeof(IStageChannel):
+                channel = (T)await guild.CreateStageChannelAsync(channelName, prop =>
+                {
+                    prop.CategoryId = category.Id;
+                });
+                break;
+            case Type t when t == typeof(INewsChannel):
+                channel = (T)await guild.CreateNewsChannelAsync(channelName, prop =>
+                {
+                    prop.CategoryId = category.Id;
+                });
+                break;
+            case Type t when t == typeof(IForumChannel):
+                channel = (T)await guild.CreateForumChannelAsync(channelName, prop =>
+                {
+                    prop.CategoryId = category.Id;
+                });
+                break;
+            case Type t when t == typeof(IStageChannel):
+                channel = (T)await guild.CreateStageChannelAsync(channelName, prop =>
+                {
+                    prop.CategoryId = category.Id;
+                });
+                break;
+            default:
+                throw new NotSupportedException($"Channel type '{typeof(T).Name}' is not supported.");
+        }
+        return channel;
+    }
+
+    public static async Task<T> CreateOrGetChannelAsync<T>(this ICategoryChannel category, string channelName) where T : INestedChannel
     {
         var guild = category.Guild;
         var channel = await category.GetChannelByNameAsync<T>(channelName);
 
         if (channel == null)
         {
-            switch(typeof(T))
-            {
-                case Type t when t == typeof(ITextChannel):
-                    channel = (T)await guild.CreateTextChannelAsync(channelName, prop =>
-                    {
-                        prop.CategoryId = category.Id;
-                    });
-                    break;
-                case Type t when t == typeof(IVoiceChannel):
-                    channel = (T)await guild.CreateVoiceChannelAsync(channelName, prop =>
-                    {
-                        prop.CategoryId = category.Id;
-                    });
-                    break;
-                case Type t when t == typeof(IStageChannel):
-                    channel = (T)await guild.CreateStageChannelAsync(channelName, prop =>
-                    {
-                        prop.CategoryId = category.Id;
-                    });
-                    break;
-                case Type t when t == typeof(INewsChannel):
-                    channel = (T)await guild.CreateNewsChannelAsync(channelName, prop =>
-                    {
-                        prop.CategoryId = category.Id;
-                    });
-                    break;
-                case Type t when t == typeof(IForumChannel):
-                    channel = (T)await guild.CreateForumChannelAsync(channelName, prop =>
-                    {
-                        prop.CategoryId = category.Id;
-                    });
-                    break;
-                case Type t when t == typeof(IStageChannel):
-                    channel = (T)await guild.CreateStageChannelAsync(channelName, prop =>
-                    {
-                        prop.CategoryId = category.Id;
-                    });
-                    break;
-                default:
-                    throw new NotSupportedException($"Channel type '{typeof(T).Name}' is not supported.");
-            }
+            channel = await category.CreateChannelByNameAsync<T>(channelName);
         }
-        await channel.ModifyAsync(prop => prop.Position = 0);
         return channel;
     }
 
