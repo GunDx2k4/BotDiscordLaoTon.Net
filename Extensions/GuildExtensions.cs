@@ -133,4 +133,14 @@ public static class GuildExtensions
             .Where(c => (c as INestedChannel)?.CategoryId == category.Id);
         return channels;
     }
+
+    public static async Task DeleteCategoryAndChannelsAsync(this IGuild guild, ICategoryChannel category)
+    {
+        var channels = await guild.GetChannelsInCategoryAsync(category);
+        foreach (var channel in channels)
+        {
+            await channel.DeleteAsync();
+        }
+        await category.DeleteAsync();
+    }
 }

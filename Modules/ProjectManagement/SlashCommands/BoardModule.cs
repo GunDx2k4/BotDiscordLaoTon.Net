@@ -46,7 +46,39 @@ public class BoardModule(ILogger<BoardModule> logger, IBoardRepository boardRepo
                         BoardChannelId = boardChannel.Id
                     });
                 }
-                await FollowupAsync($"Board '{name}' already exists. Resources have been updated.");
+                var embedBuilder = new EmbedBuilder
+                {
+                    Title = "Board Updated",
+                    Description = $"The board {Format.Bold(name)} has been updated successfully.",
+                    Fields =
+                    {
+                        new EmbedFieldBuilder
+                        {
+                            Name = "Category Channel",
+                            Value = category.Name,
+                            IsInline = true
+                        },
+                        new EmbedFieldBuilder
+                        {
+                            Name = "Info Channel",
+                            Value = infoChannel.Mention,
+                            IsInline = true
+                        },
+                        new EmbedFieldBuilder
+                        {
+                            Name = "Board Channel",
+                            Value = boardChannel.Mention,
+                            IsInline = true
+                        },
+                        new EmbedFieldBuilder
+                        {
+                            Name = "Member Role",
+                            Value = memberRole.Mention,
+                            IsInline = true
+                        }
+                    },
+                };
+                await FollowupAsync($"Board {Format.Bold(name)} already exists. Resources have been updated.", embed: embedBuilder.BuildSuccessEmbed());
                 return;
             }
 
@@ -60,12 +92,46 @@ public class BoardModule(ILogger<BoardModule> logger, IBoardRepository boardRepo
                 InfoChannelId = infoChannel.Id,
                 BoardChannelId = boardChannel.Id
             });
-            await FollowupAsync($"Board '{name}' has been created successfully.");
+            await FollowupAsync($"Board {Format.Bold(name)} has been created successfully.");
         }
         else
         {
             var (memberRole, category, infoChannel, boardChannel) = await Context.CreateBoardResourcesAsync(name);
-            await FollowupAsync($"Board '{name}' has been created or updated successfully.");
+
+            var embedBuilder = new EmbedBuilder
+            {
+                Title = "Board Created",
+                Description = $"The board {Format.Bold(name)} has been created successfully.",
+                Fields =
+                {
+                    new EmbedFieldBuilder
+                    {
+                        Name = "Category Channel",
+                        Value = category.Name,
+                        IsInline = true
+                    },
+                    new EmbedFieldBuilder
+                    {
+                        Name = "Info Channel",
+                        Value = infoChannel.Mention,
+                        IsInline = true
+                    },
+                    new EmbedFieldBuilder
+                    {
+                        Name = "Board Channel",
+                        Value = boardChannel.Mention,
+                        IsInline = true
+                    },
+                    new EmbedFieldBuilder
+                    {
+                        Name = "Member Role",
+                        Value = memberRole.Mention,
+                        IsInline = true
+                    }
+                },
+            };
+
+            await FollowupAsync($"Board {Format.Bold(name)} has been created or updated successfully.", embed: embedBuilder.BuildSuccessEmbed());
 
             var board = new Board
             {
@@ -87,7 +153,7 @@ public class BoardModule(ILogger<BoardModule> logger, IBoardRepository boardRepo
     [SlashCommand("list", "List all existing boards")]
     public async Task ListBoardsAsync()
     {
-        await DeferAsync(ephemeral: true);
+        await DeferAsync();
 
         var boards = await boardRepository.GetBoardsByGuildIdAsync(Context.Guild.Id);
         if (boards.Count == 0)
@@ -98,18 +164,57 @@ public class BoardModule(ILogger<BoardModule> logger, IBoardRepository boardRepo
 
         foreach (var board in boards)
         {
-            var owner = await Context.Guild.GetUserAsync(board.OwnerId);
-            var memberRole = await Context.Guild.GetRoleAsync(board.MemberRoleId);
-            var boardChannel = await Context.Guild.GetChannelAsync(board.BoardChannelId) as ITextChannel;
-            var embedBuilder = new EmbedBuilder
+            try
             {
-                Title = board.Name,
-                Description = $"Board ID: {board.Id}\n" +
-                              $"Owner ID: {owner.Mention}\n" +
-                              $"Member Role ID: {memberRole.Mention}\n" +
-                              $"Board Channel ID: {boardChannel?.Mention}"
-            };
-            await FollowupAsync(embed: embedBuilder.BuildInfoEmbed());
+                var owner = await Context.Guild.GetUserAsync(board.OwnerId);
+                var memberRole = await Context.Guild.GetRoleAsync(board.MemberRoleId);
+                var boardChannel = await Context.Guild.GetChannelAsync(board.BoardChannelId) as ITextChannel;
+                var embedBuilder = new EmbedBuilder
+                {
+                    Title = board.Name,
+                    Fields =
+                {
+                    new EmbedFieldBuilder
+                    {
+                        Name = "Owner",
+                        Value = owner != null ? owner.Mention : "Unknown",
+                        IsInline = true
+                    },
+                    new EmbedFieldBuilder
+                    {
+                        Name = "Member Role",
+                        Value = memberRole != null ? memberRole.Mention : "Unknown",
+                        IsInline = true
+                    },
+                    new EmbedFieldBuilder
+                    {
+                        Name = "Board Channel",
+                        Value = boardChannel != null ? boardChannel.Mention : "Unknown",
+                        IsInline = true
+                    }
+                },
+                };
+
+                var deleteButton = new ButtonBuilder
+                {
+                    Label = "Delete Board",
+                    CustomId = $"delete_board_{board.Id}".ToButtonId(),
+                    Style = ButtonStyle.Danger
+                };
+
+                var component = new ComponentBuilder()
+                    .WithButton(deleteButton)
+                    .Build();
+
+                await FollowupAsync(embed: embedBuilder.BuildInfoEmbed(), components: component);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error listing board with ID {BoardId}", board.Id);
+                await boardRepository.DeleteBoardAsync(board.Id);
+                continue;
+            }
+
         }
 
     }
